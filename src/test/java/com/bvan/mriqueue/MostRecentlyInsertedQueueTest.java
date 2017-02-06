@@ -1,10 +1,11 @@
 package com.bvan.mriqueue;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
-import java.util.ConcurrentModificationException;
-import java.util.Iterator;
-import java.util.Queue;
+import java.util.*;
 
 import static java.util.Arrays.asList;
 import static org.hamcrest.Matchers.*;
@@ -13,11 +14,34 @@ import static org.junit.Assert.assertThat;
 /**
  * @author bvanchuhov
  */
+@RunWith(value = Parameterized.class)
 public class MostRecentlyInsertedQueueTest {
+
+    private Class<? extends Queue> queueClass;
+
+    @Parameters(name = "{index} : {0}")
+    public static Collection<Class<? extends Queue>> data() {
+        return Arrays.asList(
+                MostRecentlyInsertedQueue.class,
+                ConcurrentMostRecentlyInsertedQueue.class
+        );
+    }
+
+    public MostRecentlyInsertedQueueTest(Class<? extends Queue> queueClass) {
+        this.queueClass = queueClass;
+    }
+
+    private Queue<Integer> createQueue(int capacity) {
+        try {
+            return queueClass.getConstructor(int.class).newInstance(capacity);
+        } catch (Exception e1) {
+            throw new RuntimeException("can't create queue with class " + queueClass.getName());
+        }
+    }
 
     @Test
     public void offerOneElem() {
-        Queue<Integer> queue = new MostRecentlyInsertedQueue<>(1);
+        Queue<Integer> queue = createQueue(1);
         queue.offer(10);
 
         assertThat(queue, contains(10));
@@ -26,7 +50,7 @@ public class MostRecentlyInsertedQueueTest {
 
     @Test
     public void offerElemsNotGreaterThanCapacity() {
-        Queue<Integer> queue = new MostRecentlyInsertedQueue<>(3);
+        Queue<Integer> queue = createQueue(3);
         offerAll(queue, asList(10, 20));
 
         assertThat(queue, contains(10, 20));
@@ -35,7 +59,7 @@ public class MostRecentlyInsertedQueueTest {
 
     @Test
     public void offerElemsGreaterThanCapacity() {
-        Queue<Integer> queue = new MostRecentlyInsertedQueue<>(3);
+        Queue<Integer> queue = createQueue(3);
         offerAll(queue, asList(10, 20, 30, 40));
 
         assertThat(queue, contains(20, 30, 40));
@@ -44,7 +68,7 @@ public class MostRecentlyInsertedQueueTest {
 
     @Test
     public void offerAndPoll() {
-        Queue<Integer> queue = new MostRecentlyInsertedQueue<>(3);
+        Queue<Integer> queue = createQueue(3);
         offerAll(queue, asList(10, 20, 30));
         int polled = queue.poll();
 
@@ -55,7 +79,7 @@ public class MostRecentlyInsertedQueueTest {
 
     @Test
     public void pollFromEmptyQueueShouldReturnNull() {
-        Queue<Integer> queue = new MostRecentlyInsertedQueue<>(3);
+        Queue<Integer> queue = createQueue(3);
         Integer polled = queue.poll();
 
         assertThat(polled, is(nullValue()));
@@ -64,7 +88,7 @@ public class MostRecentlyInsertedQueueTest {
 
     @Test
     public void fillAndEmptyQueue_pollFromEmptyQueueShouldReturnNull() {
-        Queue<Integer> queue = new MostRecentlyInsertedQueue<>(3);
+        Queue<Integer> queue = createQueue(3);
         offerAll(queue, asList(10));
 
         queue.poll();
@@ -76,7 +100,7 @@ public class MostRecentlyInsertedQueueTest {
 
     @Test
     public void offerAndPeek() {
-        Queue<Integer> queue = new MostRecentlyInsertedQueue<>(3);
+        Queue<Integer> queue = createQueue(3);
         offerAll(queue, asList(10, 20, 30));
         int peeked = queue.peek();
 
@@ -87,7 +111,7 @@ public class MostRecentlyInsertedQueueTest {
 
     @Test
     public void peekFromEmptyQueueShouldReturnNull() {
-        Queue<Integer> queue = new MostRecentlyInsertedQueue<>(3);
+        Queue<Integer> queue = createQueue(3);
         Integer peeked = queue.peek();
 
         assertThat(peeked, is(nullValue()));
@@ -96,7 +120,7 @@ public class MostRecentlyInsertedQueueTest {
 
     @Test(expected = ConcurrentModificationException.class)
     public void offerDuringIterationViolatesNextIterations() {
-        Queue<Integer> queue = new MostRecentlyInsertedQueue<>(3);
+        Queue<Integer> queue = createQueue(3);
         offerAll(queue, asList(10, 20));
 
         Iterator<Integer> iterator = queue.iterator();
@@ -108,7 +132,7 @@ public class MostRecentlyInsertedQueueTest {
 
     @Test(expected = ConcurrentModificationException.class)
     public void pollDuringIterationForbidsNextIterations() {
-        Queue<Integer> queue = new MostRecentlyInsertedQueue<>(3);
+        Queue<Integer> queue = createQueue(3);
         offerAll(queue, asList(10, 20));
 
         Iterator<Integer> iterator = queue.iterator();
@@ -123,7 +147,7 @@ public class MostRecentlyInsertedQueueTest {
         new MostRecentlyInsertedQueue<>(-1);
     }
 
-    private static  <E> void offerAll(Queue<E> queue, Iterable<E> elems) {
+    private static <E> void offerAll(Queue<E> queue, Iterable<E> elems) {
         for (E elem : elems) {
             queue.offer(elem);
         }
