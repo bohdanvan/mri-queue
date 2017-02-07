@@ -15,6 +15,9 @@ public class ConcurrentMostRecentlyInsertedQueue<E> implements Queue<E> {
 
     private final Queue<E> queue;
 
+    /**
+     * @throws IllegalArgumentException if {@code capacity} is not positive
+     */
     public ConcurrentMostRecentlyInsertedQueue(int capacity) {
         queue = new MostRecentlyInsertedQueue<>(capacity);
     }

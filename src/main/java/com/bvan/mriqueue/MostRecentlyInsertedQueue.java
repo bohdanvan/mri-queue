@@ -26,58 +26,53 @@ public class MostRecentlyInsertedQueue<E> extends AbstractQueue<E> implements Qu
             throw new IllegalArgumentException("capacity should be greater than 0: " + capacity);
         }
         this.capacity = capacity;
+        head = tail = Node.emptyNode();
     }
 
+    @Override
     public int size() {
         return size;
     }
 
+    @Override
     public boolean offer(E e) {
-        if (isEmpty()) {
-            addFirstElem(e);
+        if (size == capacity) {
+            enqueue(e);
+            dequeue();
         } else {
-            if (size == capacity) {
-                addToTail(e);
-                removeFromHead();
-            } else {
-                addToTail(e);
-            }
+            enqueue(e);
         }
         return true;
     }
 
+    @Override
     public E poll() {
-        return (!isEmpty()) ? removeFromHead() : null;
+        return (!isEmpty()) ? dequeue() : null;
     }
 
+    @Override
     public E peek() {
-        return (!isEmpty()) ? head.item : null;
+        return (!isEmpty()) ? firstNode().item : null;
     }
 
+    @Override
     public Iterator<E> iterator() {
         return new QueueIterator();
     }
 
-    private E removeFromHead() {
-        E oldValue = head.item;
-
-        Node<E> newHead = head.next;
-
-        head.item = null; // help GC
-        head.next = null;
-
-        head = newHead;
-        if (newHead == null) {
-            tail = null;
-        }
-
-        size--;
-        mod++;
-
-        return oldValue;
+    private Node<E> firstNode() {
+        return head.next;
     }
 
-    private void addToTail(E e) {
+    private Node<E> beforeFirstNode() {
+        return head;
+    }
+
+    private E dequeue() {
+        return unlink(firstNode(), beforeFirstNode());
+    }
+
+    private void enqueue(E e) {
         Node<E> node = new Node<>(e);
         tail.next = node;
         tail = node;
@@ -86,18 +81,29 @@ public class MostRecentlyInsertedQueue<E> extends AbstractQueue<E> implements Qu
         mod++;
     }
 
-    private void addFirstElem(E e) {
-        Node<E> firstNode = new Node<>(e);
-        head = firstNode;
-        tail = firstNode;
+    private E unlink(Node<E> node, Node<E> prev) {
+        if (node == tail) {
+            tail = prev;
+        }
+        prev.next = node.next;
 
-        size++;
+        E res = node.item;
+        node.item = null;
+        node.next = null;
+
+        size--;
         mod++;
+
+        return res;
     }
 
     private static class Node<E> {
         E item;
         Node<E> next;
+
+        public static <E> Node<E> emptyNode() {
+            return new Node<>(null);
+        }
 
         Node(E item) {
             this.item = item;
@@ -105,12 +111,13 @@ public class MostRecentlyInsertedQueue<E> extends AbstractQueue<E> implements Qu
     }
 
     private class QueueIterator implements Iterator<E> {
-        private Node<E> node = head;
-        private final int expectedMod = mod;
+        private Node<E> lastRet = null;
+        private Node<E> current = firstNode();
+        private int expectedMod = mod;
 
         @Override
         public boolean hasNext() {
-            return node != null;
+            return current != null;
         }
 
         /**
@@ -121,12 +128,30 @@ public class MostRecentlyInsertedQueue<E> extends AbstractQueue<E> implements Qu
             if (mod != expectedMod) {
                 throw new ConcurrentModificationException();
             }
-            if (node == null) {
+            if (current == null) {
                 throw new NoSuchElementException();
             }
-            E res = node.item;
-            node = node.next;
+            E res = current.item;
+            lastRet = current;
+            current = current.next;
             return res;
+        }
+
+        @Override
+        public void remove() {
+            if (lastRet == null) {
+                throw new IllegalStateException();
+            }
+            Node<E> node = lastRet;
+            lastRet = null;
+            for (Node<E> prev = beforeFirstNode(), n = firstNode();
+                 n != null;
+                 prev = n, n = n.next) {
+                if (n == node) {
+                    unlink(n, prev);
+                }
+            }
+            expectedMod = mod;
         }
     }
 }
