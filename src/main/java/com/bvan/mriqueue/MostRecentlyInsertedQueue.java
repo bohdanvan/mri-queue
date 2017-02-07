@@ -12,8 +12,8 @@ public class MostRecentlyInsertedQueue<E> extends AbstractQueue<E> implements Qu
 
     private final int capacity;
 
-    private Node<E> head;
-    private Node<E> tail;
+    private Node<E> beforeFirst;
+    private Node<E> beforeLast;
     private int size;
 
     private int mod;
@@ -26,7 +26,7 @@ public class MostRecentlyInsertedQueue<E> extends AbstractQueue<E> implements Qu
             throw new IllegalArgumentException("capacity should be greater than 0: " + capacity);
         }
         this.capacity = capacity;
-        head = tail = Node.emptyNode();
+        beforeFirst = beforeLast = Node.emptyNode();
     }
 
     @Override
@@ -36,6 +36,10 @@ public class MostRecentlyInsertedQueue<E> extends AbstractQueue<E> implements Qu
 
     @Override
     public boolean offer(E e) {
+        if (e == null) {
+            throw new NullPointerException();
+        }
+
         if (size == capacity) {
             enqueue(e);
             dequeue();
@@ -61,11 +65,11 @@ public class MostRecentlyInsertedQueue<E> extends AbstractQueue<E> implements Qu
     }
 
     private Node<E> firstNode() {
-        return head.next;
+        return beforeFirst.next;
     }
 
     private Node<E> beforeFirstNode() {
-        return head;
+        return beforeFirst;
     }
 
     private E dequeue() {
@@ -74,17 +78,14 @@ public class MostRecentlyInsertedQueue<E> extends AbstractQueue<E> implements Qu
 
     private void enqueue(E e) {
         Node<E> node = new Node<>(e);
-        tail.next = node;
-        tail = node;
+        beforeLast.next = node;
+        beforeLast = node;
 
         size++;
         mod++;
     }
 
     private E unlink(Node<E> node, Node<E> prev) {
-        if (node == tail) {
-            tail = prev;
-        }
         prev.next = node.next;
 
         E res = node.item;
@@ -101,7 +102,7 @@ public class MostRecentlyInsertedQueue<E> extends AbstractQueue<E> implements Qu
         E item;
         Node<E> next;
 
-        public static <E> Node<E> emptyNode() {
+        static <E> Node<E> emptyNode() {
             return new Node<>(null);
         }
 
@@ -149,6 +150,7 @@ public class MostRecentlyInsertedQueue<E> extends AbstractQueue<E> implements Qu
                  prev = n, n = n.next) {
                 if (n == node) {
                     unlink(n, prev);
+                    break;
                 }
             }
             expectedMod = mod;

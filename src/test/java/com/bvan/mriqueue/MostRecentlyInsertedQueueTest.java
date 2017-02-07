@@ -23,7 +23,8 @@ public class MostRecentlyInsertedQueueTest {
     public static Collection<Class<? extends Queue>> data() {
         return Arrays.asList(
                 MostRecentlyInsertedQueue.class,
-                ConcurrentMostRecentlyInsertedQueue.class
+                ConcurrentMostRecentlyInsertedQueue.class,
+                MostRecentlyInsertedBlockingQueue.class
         );
     }
 
@@ -118,28 +119,48 @@ public class MostRecentlyInsertedQueueTest {
         assertThat(queue, hasSize(0));
     }
 
-    @Test(expected = ConcurrentModificationException.class)
-    public void offerDuringIterationViolatesNextIterations() {
+    @Test
+    public void removeFromHead() {
         Queue<Integer> queue = createQueue(3);
-        offerAll(queue, asList(10, 20));
+        offerAll(queue, asList(10, 20, 30));
 
-        Iterator<Integer> iterator = queue.iterator();
+        boolean removeRes = queue.remove(10);
 
-        queue.offer(30);
-
-        Integer elem = iterator.next();
+        assertThat(removeRes, is(true));
+        assertThat(queue, contains(20, 30));
     }
 
-    @Test(expected = ConcurrentModificationException.class)
-    public void pollDuringIterationForbidsNextIterations() {
+    @Test
+    public void removeFromTail() {
         Queue<Integer> queue = createQueue(3);
-        offerAll(queue, asList(10, 20));
+        offerAll(queue, asList(10, 20, 30));
 
-        Iterator<Integer> iterator = queue.iterator();
+        boolean removeRes = queue.remove(30);
 
-        queue.poll();
+        assertThat(removeRes, is(true));
+        assertThat(queue, contains(10, 20));
+    }
 
-        Integer elem = iterator.next();
+    @Test
+    public void removeFromMiddle() {
+        Queue<Integer> queue = createQueue(3);
+        offerAll(queue, asList(10, 20, 30));
+
+        boolean removeRes = queue.remove(20);
+
+        assertThat(removeRes, is(true));
+        assertThat(queue, contains(10, 30));
+    }
+
+    @Test
+    public void removeSingleElem() {
+        Queue<Integer> queue = createQueue(1);
+        queue.offer(10);
+
+        boolean removeRes = queue.remove(10);
+
+        assertThat(removeRes, is(true));
+        assertThat(queue, is(empty()));
     }
 
     @Test(expected = IllegalArgumentException.class)
