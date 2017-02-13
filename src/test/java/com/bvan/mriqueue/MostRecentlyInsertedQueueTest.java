@@ -71,32 +71,32 @@ public class MostRecentlyInsertedQueueTest {
     public void offerAndPoll() {
         Queue<Integer> queue = createQueue(3);
         offerAll(queue, asList(10, 20, 30));
-        int polled = queue.poll();
 
-        assertThat(polled, is(10));
-        assertThat(queue, contains(20, 30));
-        assertThat(queue, hasSize(2));
+        assertThat(queue.poll(), is(10));
+        assertThat(queue.poll(), is(20));
+        assertThat(queue.poll(), is(30));
+        assertThat(queue.poll(), is(nullValue()));
+        assertThat(queue.poll(), is(nullValue()));
+    }
+
+    @Test
+    public void offerPollOfferPoll() {
+        Queue<Integer> queue = createQueue(3);
+
+        queue.offer(10);
+        queue.poll();
+        queue.offer(20);
+
+        assertThat(queue.poll(), is(20));
+        assertThat(queue.poll(), is(nullValue()));
+        assertThat(queue.poll(), is(nullValue()));
     }
 
     @Test
     public void pollFromEmptyQueueShouldReturnNull() {
         Queue<Integer> queue = createQueue(3);
-        Integer polled = queue.poll();
 
-        assertThat(polled, is(nullValue()));
-        assertThat(queue, hasSize(0));
-    }
-
-    @Test
-    public void fillAndEmptyQueue_pollFromEmptyQueueShouldReturnNull() {
-        Queue<Integer> queue = createQueue(3);
-        offerAll(queue, asList(10));
-
-        queue.poll();
-        Integer polled = queue.poll();
-
-        assertThat(polled, is(nullValue()));
-        assertThat(queue, hasSize(0));
+        assertThat(queue.poll(), is(nullValue()));
     }
 
     @Test
@@ -107,7 +107,6 @@ public class MostRecentlyInsertedQueueTest {
 
         assertThat(peeked, is(10));
         assertThat(queue, contains(10, 20, 30));
-        assertThat(queue, hasSize(3));
     }
 
     @Test
@@ -116,7 +115,6 @@ public class MostRecentlyInsertedQueueTest {
         Integer peeked = queue.peek();
 
         assertThat(peeked, is(nullValue()));
-        assertThat(queue, hasSize(0));
     }
 
     @Test

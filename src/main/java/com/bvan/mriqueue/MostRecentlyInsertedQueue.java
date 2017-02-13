@@ -13,7 +13,7 @@ public class MostRecentlyInsertedQueue<E> extends AbstractQueue<E> implements Qu
     private final int capacity;
 
     private Node<E> beforeFirst;
-    private Node<E> beforeLast;
+    private Node<E> last;
     private int size;
 
     private int mod;
@@ -26,7 +26,7 @@ public class MostRecentlyInsertedQueue<E> extends AbstractQueue<E> implements Qu
             throw new IllegalArgumentException("capacity should be greater than 0: " + capacity);
         }
         this.capacity = capacity;
-        beforeFirst = beforeLast = Node.emptyNode();
+        beforeFirst = last = Node.emptyNode();
     }
 
     @Override
@@ -78,8 +78,8 @@ public class MostRecentlyInsertedQueue<E> extends AbstractQueue<E> implements Qu
 
     private void enqueue(E e) {
         Node<E> node = new Node<>(e);
-        beforeLast.next = node;
-        beforeLast = node;
+        last.next = node;
+        last = node;
 
         size++;
         mod++;
@@ -95,6 +95,10 @@ public class MostRecentlyInsertedQueue<E> extends AbstractQueue<E> implements Qu
         E res = node.item;
         node.item = null;
         node.next = null;
+
+        if (last == node) {
+            last = prev;
+        }
 
         size--;
         mod++;

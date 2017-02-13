@@ -18,7 +18,7 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
     private final int capacity;
 
     private Node<E> beforeFirst;
-    private Node<E> beforeLast;
+    private Node<E> last;
 
     private final AtomicInteger count = new AtomicInteger(0);
 
@@ -35,7 +35,7 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
             throw new IllegalArgumentException("capacity should be greater than 0: " + capacity);
         }
         this.capacity = capacity;
-        beforeFirst = beforeLast = Node.emptyNode();
+        beforeFirst = last = Node.emptyNode();
     }
 
     @Override
@@ -169,8 +169,8 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
      */
     private void enqueue(E e) {
         Node<E> node = new Node<>(e);
-        beforeLast.next = node;
-        beforeLast = node;
+        last.next = node;
+        last = node;
 
         count.incrementAndGet();
     }
@@ -193,6 +193,10 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
         E res = node.item;
         node.item = null;
         node.next = null;
+
+        if (last == node) {
+            last = prev;
+        }
 
         count.decrementAndGet();
 
