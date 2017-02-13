@@ -1,8 +1,5 @@
 package com.bvan.mriqueue;
 
-import net.jcip.annotations.GuardedBy;
-import net.jcip.annotations.ThreadSafe;
-
 import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
@@ -12,9 +9,10 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
+ * Thread-safe blocking implementation of {@code MostRecentlyInsertedQueue}.
+ *
  * @author bvanchuhov
  */
-@ThreadSafe
 public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> implements BlockingQueue<E> {
 
     private final int capacity;
@@ -59,7 +57,9 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
         }
     }
 
-    @GuardedBy("putLock, take lock")
+    /**
+     * Guarded by {@code putLock} and {@code takeLock}.
+     */
     private void offerInternally(E e) {
         if (size() == capacity) {
             enqueue(e);
@@ -164,7 +164,9 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
         }
     }
 
-    @GuardedBy("putLock")
+    /**
+     * Guarded by {@code putLock}.
+     */
     private void enqueue(E e) {
         Node<E> node = new Node<>(e);
         beforeLast.next = node;
@@ -173,12 +175,18 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
         count.incrementAndGet();
     }
 
-    @GuardedBy("takeLock")
+    /**
+     * Guarded by {@code takeLock}.
+     */
     private E dequeue() {
         return unlink(firstNode(), beforeFirstNode());
     }
 
-    @GuardedBy("takeLock")
+    /**
+     * Guarded by {@code takeLock}.
+     * @param node {@code not null}.
+     * @param node {@code not null}.
+     */
     private E unlink(Node<E> node, Node<E> prev) {
         prev.next = node.next;
 
@@ -350,7 +358,9 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
         return beforeFirst;
     }
 
-    @GuardedBy("takeLock")
+    /**
+     * Guarded by takeLock.
+     */
     private void notEmptySignal() {
         takeLock.lock();
         try {

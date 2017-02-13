@@ -1,13 +1,13 @@
 package com.bvan.mriqueue;
 
-import net.jcip.annotations.NotThreadSafe;
 
 import java.util.*;
 
 /**
+ * Not tread-safe implementation of MostRecentlyInsertedQueue.
+ *
  * @author bvanchuhov
  */
-@NotThreadSafe
 public class MostRecentlyInsertedQueue<E> extends AbstractQueue<E> implements Queue<E> {
 
     private final int capacity;
@@ -85,6 +85,10 @@ public class MostRecentlyInsertedQueue<E> extends AbstractQueue<E> implements Qu
         mod++;
     }
 
+    /**
+     * @param node {@code not null}.
+     * @param node {@code not null}.
+     */
     private E unlink(Node<E> node, Node<E> prev) {
         prev.next = node.next;
 

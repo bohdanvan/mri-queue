@@ -1,16 +1,15 @@
 package com.bvan.mriqueue;
 
-import net.jcip.annotations.ThreadSafe;
-
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 /**
+ * Thread-safe implementation of {@code MostRecentlyInsertedQueue}.
+ *
  * @author bvanchuhov
  */
-@ThreadSafe
 public class ConcurrentMostRecentlyInsertedQueue<E> implements Queue<E> {
 
     private final Queue<E> queue;
