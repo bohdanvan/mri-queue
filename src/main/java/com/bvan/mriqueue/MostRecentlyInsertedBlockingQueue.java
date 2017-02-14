@@ -49,24 +49,26 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
             throw new NullPointerException();
         }
 
-        fullyLockInterruptibly();
+        putLock.lockInterruptibly();
         try {
-            offerInternally(e);
+            if (size() == capacity) {
+                enqueue(e);
+                interruptiblyLockedDequeue();
+            } else {
+                enqueue(e);
+                notEmptySignal();
+            }
         } finally {
-            fullyUnlock();
+            putLock.unlock();
         }
     }
 
-    /**
-     * Guarded by {@code putLock} and {@code takeLock}.
-     */
-    private void offerInternally(E e) {
-        if (size() == capacity) {
-            enqueue(e);
+    private void interruptiblyLockedDequeue() throws InterruptedException {
+        takeLock.lockInterruptibly();
+        try {
             dequeue();
-        } else {
-            enqueue(e);
-            notEmptySignal();
+        } finally {
+            takeLock.unlock();
         }
     }
 
@@ -82,14 +84,29 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
             throw new NullPointerException();
         }
 
-        fullyLock();
+        putLock.lock();
         try {
-            offerInternally(e);
+            if (size() == capacity) {
+                enqueue(e);
+                lockedDeque();
+            } else {
+                enqueue(e);
+                notEmptySignal();
+            }
         } finally {
-            fullyUnlock();
+            putLock.unlock();
         }
 
         return true;
+    }
+
+    private void lockedDeque() {
+        takeLock.lock();
+        try {
+            dequeue();
+        } finally {
+            takeLock.unlock();
+        }
     }
 
     @Override
@@ -136,17 +153,12 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
             return null;
         }
 
-        E res = null;
         takeLock.lock();
         try {
-            if (!isEmpty()) {
-                res = dequeue();
-            }
+            return (!isEmpty()) ? dequeue() : null;
         } finally {
             takeLock.unlock();
         }
-
-        return res;
     }
 
     @Override
@@ -157,50 +169,10 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
 
         takeLock.lock();
         try {
-            Node<E> firstNode = firstNode();
-            return (beforeFirst != null) ? firstNode.item : null;
+            return (!isEmpty()) ? firstNode().item : null;
         } finally {
             takeLock.unlock();
         }
-    }
-
-    /**
-     * Guarded by {@code putLock}.
-     */
-    private void enqueue(E e) {
-        Node<E> node = new Node<>(e);
-        last.next = node;
-        last = node;
-
-        count.incrementAndGet();
-    }
-
-    /**
-     * Guarded by {@code takeLock}.
-     */
-    private E dequeue() {
-        return unlink(firstNode(), beforeFirstNode());
-    }
-
-    /**
-     * Guarded by {@code takeLock}.
-     * @param node {@code not null}.
-     * @param node {@code not null}.
-     */
-    private E unlink(Node<E> node, Node<E> prev) {
-        prev.next = node.next;
-
-        E res = node.item;
-        node.item = null;
-        node.next = null;
-
-        if (last == node) {
-            last = prev;
-        }
-
-        count.decrementAndGet();
-
-        return res;
     }
 
     @Override
@@ -231,6 +203,7 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
         if (isEmpty()) {
             return false;
         }
+
         fullyLock();
         try {
             if (isEmpty()) {
@@ -298,25 +271,21 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
     public String toString() {
         fullyLock();
         try {
-            return toStringInternally();
+            Node<E> node = firstNode();
+            if (node == null) {
+                return "[]";
+            }
+
+            StringJoiner joiner = new StringJoiner(", ", "[", "]");
+            for (; node != null; node = node.next) {
+                E item = node.item;
+                String s = (item == this) ? "(this)" : item.toString();
+                joiner.add(s);
+            }
+            return joiner.toString();
         } finally {
             fullyUnlock();
         }
-    }
-
-    private String toStringInternally() {
-        Node<E> node = firstNode();
-        if (node == null) {
-            return "[]";
-        }
-
-        StringJoiner joiner = new StringJoiner(", ", "[", "]");
-        for (; node != null; node = node.next) {
-            E item = node.item;
-            String s = (item == this) ? "(this)" : item.toString();
-            joiner.add(s);
-        }
-        return joiner.toString();
     }
 
     @Override
@@ -326,12 +295,45 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
 
     @Override
     public int drainTo(Collection<? super E> c) {
-        throw new UnsupportedOperationException();
+        return drainTo(c, Integer.MAX_VALUE);
     }
 
     @Override
     public int drainTo(Collection<? super E> c, int maxElements) {
-        throw new UnsupportedOperationException();
+        if (c == null) {
+            throw new NullPointerException();
+        }
+        if (c == this) {
+            throw new IllegalArgumentException();
+        }
+        if (maxElements <= 0) {
+            return 0;
+        }
+
+        takeLock.lock();
+        try {
+            int n = Math.min(maxElements, size());
+
+            Node<E> prevNode = beforeFirstNode();
+            int i = 0;
+            try {
+                while (i < n) {
+                    Node<E> node = prevNode.next;
+                    c.add(node.item);
+                    node.item = null;
+                    prevNode.next = prevNode;
+                    prevNode = node;
+                    i++;
+                }
+                return n;
+            } finally {
+                if (i > 0) {
+                    beforeFirst = prevNode;
+                }
+            }
+        } finally {
+            takeLock.unlock();
+        }
     }
 
     @Override
@@ -339,9 +341,52 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
         return new QueueIterator();
     }
 
-    private void fullyLockInterruptibly() throws InterruptedException {
-        putLock.lockInterruptibly();
-        takeLock.lockInterruptibly();
+
+    /**
+     * Guarded by {@code putLock}.
+     */
+    private void enqueue(E e) {
+        Node<E> node = new Node<>(e);
+        last.next = node;
+        last = node;
+
+        count.incrementAndGet();
+    }
+
+    /**
+     * Guarded by {@code takeLock}.
+     */
+    private E dequeue() {
+        return unlink(firstNode(), beforeFirstNode());
+    }
+
+    /**
+     * Guarded by {@code takeLock}.
+     * @param node {@code not null}.
+     * @param node {@code not null}.
+     */
+    private E unlink(Node<E> node, Node<E> prev) {
+        prev.next = node.next;
+
+        E res = node.item;
+        node.item = null;
+        node.next = null;
+
+        if (last == node) {
+            last = prev;
+        }
+
+        count.decrementAndGet();
+
+        return res;
+    }
+
+    private Node<E> firstNode() {
+        return beforeFirst.next;
+    }
+
+    private Node<E> beforeFirstNode() {
+        return beforeFirst;
     }
 
     private void fullyLock() {
@@ -354,17 +399,6 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
         putLock.unlock();
     }
 
-    private Node<E> firstNode() {
-        return beforeFirst.next;
-    }
-
-    private Node<E> beforeFirstNode() {
-        return beforeFirst;
-    }
-
-    /**
-     * Guarded by takeLock.
-     */
     private void notEmptySignal() {
         takeLock.lock();
         try {
@@ -373,6 +407,7 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
             takeLock.unlock();
         }
     }
+
 
     private static class Node<E> {
         E item;
@@ -385,13 +420,15 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
         Node(E item) {
             this.item = item;
         }
-
-        public boolean isEmpty() {
-            return item == null;
-        }
     }
 
+    /**
+     * <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/package-summary.html#Weakly">
+     *     <i>Weakly consistent</i>
+     * </a> iterator.
+     */
     private class QueueIterator implements Iterator<E> {
+
         private Node<E> lastRet;
         private Node<E> current;
         private E currentElem;

@@ -2,12 +2,15 @@ package com.bvan.mriqueue;
 
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 
@@ -51,7 +54,7 @@ public class MostRecentlyInsertedBlockingQueueTest {
     }
 
     @Test
-    public void puttingThreadAwakesBlockingThread() throws InterruptedException {
+    public void puttingThreadAwakesTakingThread() throws InterruptedException {
         BlockingQueue<Integer> queue = new MostRecentlyInsertedBlockingQueue<>(3);
 
         Thread takingThread = new Thread(() -> takeTask(queue));
@@ -71,6 +74,21 @@ public class MostRecentlyInsertedBlockingQueueTest {
         new Thread(() -> takeTask(queue)).start();
         TimeUnit.MICROSECONDS.sleep(100);
         new Thread(() -> putTask(queue)).start();
+    }
+
+    @Test
+    public void fillAndDrainToList() throws InterruptedException {
+        BlockingQueue<Integer> queue = new MostRecentlyInsertedBlockingQueue<>(3);
+        queue.put(10);
+        queue.put(20);
+        queue.put(30);
+
+
+        List<Integer> list = new ArrayList<>();
+        queue.drainTo(list, 2);
+
+        assertThat(list, contains(10, 20));
+        assertThat(queue, contains(30));
     }
 
     private void putTask(BlockingQueue<Integer> queue) {

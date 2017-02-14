@@ -17,27 +17,32 @@ import static org.junit.Assert.assertThat;
 @RunWith(value = Parameterized.class)
 public class MostRecentlyInsertedQueueTest {
 
-    private Class<? extends Queue> queueClass;
+    private final MRIQueueFactory<Integer> queueFactory;
 
     @Parameters(name = "{index} : {0}")
-    public static Collection<Class<? extends Queue>> data() {
-        return Arrays.asList(
-                MostRecentlyInsertedQueue.class,
-                ConcurrentMostRecentlyInsertedQueue.class,
-                MostRecentlyInsertedBlockingQueue.class
-        );
+    public static Collection data() {
+        return Arrays.asList(new Object[][]{
+                {
+                        "MostRecentlyInsertedQueue",
+                        (MRIQueueFactory) (capacity) -> new MostRecentlyInsertedQueue(capacity)
+                },
+                {
+                        "ConcurrentMostRecentlyInsertedQueue",
+                        (MRIQueueFactory) (capacity) -> new ConcurrentMostRecentlyInsertedQueue(capacity)
+                },
+                {
+                        "MostRecentlyInsertedBlockingQueue",
+                        (MRIQueueFactory) (capacity) -> new MostRecentlyInsertedBlockingQueue(capacity)
+                }
+        });
     }
 
-    public MostRecentlyInsertedQueueTest(Class<? extends Queue> queueClass) {
-        this.queueClass = queueClass;
+    public MostRecentlyInsertedQueueTest(String name, MRIQueueFactory<Integer> queueFactory) {
+        this.queueFactory = queueFactory;
     }
 
     private Queue<Integer> createQueue(int capacity) {
-        try {
-            return queueClass.getConstructor(int.class).newInstance(capacity);
-        } catch (Exception e1) {
-            throw new RuntimeException("can't create queue with class " + queueClass.getName());
-        }
+        return queueFactory.create(capacity);
     }
 
     @Test
