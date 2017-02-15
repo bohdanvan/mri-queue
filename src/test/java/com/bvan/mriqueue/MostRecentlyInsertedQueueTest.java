@@ -7,6 +7,7 @@ import org.junit.runners.Parameterized.Parameters;
 
 import java.util.*;
 
+import static com.bvan.mriqueue.QueueTestUtils.offerAll;
 import static java.util.Arrays.asList;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertThat;
@@ -149,9 +150,7 @@ public class MostRecentlyInsertedQueueTest {
         Queue<Integer> queue = createQueue(3);
         offerAll(queue, asList(10, 20, 30));
 
-        boolean removeRes = queue.remove(20);
-
-        assertThat(removeRes, is(true));
+        assertThat(queue.remove(20), is(true));
         assertThat(queue, contains(10, 30));
     }
 
@@ -160,9 +159,7 @@ public class MostRecentlyInsertedQueueTest {
         Queue<Integer> queue = createQueue(1);
         queue.offer(10);
 
-        boolean removeRes = queue.remove(10);
-
-        assertThat(removeRes, is(true));
+        assertThat(queue.remove(10), is(true));
         assertThat(queue, is(empty()));
     }
 
@@ -171,9 +168,20 @@ public class MostRecentlyInsertedQueueTest {
         new MostRecentlyInsertedQueue<>(-1);
     }
 
-    private static <E> void offerAll(Queue<E> queue, Iterable<E> elems) {
-        for (E elem : elems) {
-            queue.offer(elem);
-        }
+    @Test
+    public void offerAndToArray() {
+        Queue<Integer> queue = createQueue(3);
+        offerAll(queue, asList(10, 20, 30));
+
+        assertThat(queue.toArray(), arrayContaining(10, 20, 30));
+    }
+
+    @Test
+    public void offerAndClear() {
+        Queue<Integer> queue = createQueue(3);
+        offerAll(queue, asList(10, 20, 30));
+
+        queue.clear();
+        assertThat(queue, is(empty()));
     }
 }

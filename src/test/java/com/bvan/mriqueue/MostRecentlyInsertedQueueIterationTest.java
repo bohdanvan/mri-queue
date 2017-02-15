@@ -1,11 +1,10 @@
 package com.bvan.mriqueue;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
 import java.util.*;
 
+import static com.bvan.mriqueue.QueueTestUtils.offerAll;
 import static java.util.Arrays.asList;
 
 /**
@@ -35,11 +34,5 @@ public class MostRecentlyInsertedQueueIterationTest {
         queue.poll();
 
         Integer elem = iterator.next();
-    }
-
-    private static <E> void offerAll(Queue<E> queue, Iterable<E> elems) {
-        for (E elem : elems) {
-            queue.offer(elem);
-        }
     }
 }

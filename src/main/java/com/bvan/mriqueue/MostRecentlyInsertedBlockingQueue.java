@@ -17,7 +17,14 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
 
     private final int capacity;
 
+    /**
+     * Guarded by {@code takeLock}.
+     */
     private Node<E> beforeFirst;
+
+    /**
+     * Guarded by {@code putLock}.
+     */
     private Node<E> last;
 
     private final AtomicInteger count = new AtomicInteger(0);
@@ -227,7 +234,7 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
         try {
             Object[] res = new Object[size()];
             int i = 0;
-            for (Node<E> node = beforeFirst; node != null; node = node.next) {
+            for (Node<E> node = firstNode(); node != null; node = node.next) {
                 res[i++] = node.item;
             }
             return res;
@@ -237,6 +244,7 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T> T[] toArray(T[] a) {
         fullyLock();
         try {
@@ -244,8 +252,9 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
             if (a.length < size) {
                 a = (T[]) Array.newInstance(a.getClass().getComponentType(), size);
             }
+
             int i = 0;
-            for (Node<E> node = beforeFirst; node != null; node = node.next) {
+            for (Node<E> node = firstNode(); node != null; node = node.next) {
                 a[i++] = (T) node.item;
             }
             if (a.length > i) {
@@ -329,6 +338,7 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
             } finally {
                 if (i > 0) {
                     beforeFirst = prevNode;
+                    count.getAndAdd(-i);
                 }
             }
         } finally {
@@ -381,10 +391,16 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
         return res;
     }
 
+    /**
+     * Guarded by {@code takeLock}.
+     */
     private Node<E> firstNode() {
         return beforeFirst.next;
     }
 
+    /**
+     * Guarded by {@code takeLock}.
+     */
     private Node<E> beforeFirstNode() {
         return beforeFirst;
     }
@@ -485,6 +501,7 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
             if (lastRet == null) {
                 throw new IllegalStateException();
             }
+
             fullyLock();
             try {
                 Node<E> node = lastRet;

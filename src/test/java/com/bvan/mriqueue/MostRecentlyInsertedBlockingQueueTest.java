@@ -9,10 +9,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import static com.bvan.mriqueue.QueueTestUtils.offerAll;
+import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.*;
 
 /**
  * @author bvanchuhov
@@ -79,9 +79,7 @@ public class MostRecentlyInsertedBlockingQueueTest {
     @Test
     public void fillAndDrainToList() throws InterruptedException {
         BlockingQueue<Integer> queue = new MostRecentlyInsertedBlockingQueue<>(3);
-        queue.put(10);
-        queue.put(20);
-        queue.put(30);
+        offerAll(queue, asList(10, 20, 30));
 
 
         List<Integer> list = new ArrayList<>();
@@ -89,6 +87,19 @@ public class MostRecentlyInsertedBlockingQueueTest {
 
         assertThat(list, contains(10, 20));
         assertThat(queue, contains(30));
+        assertThat(queue, hasSize(1));
+    }
+
+    @Test
+    public void fillAndDrainAllToList() {
+        BlockingQueue<Integer> queue = new MostRecentlyInsertedBlockingQueue<>(3);
+        offerAll(queue, asList(10, 20, 30));
+
+        List<Integer> list = new ArrayList<>();
+        queue.drainTo(list);
+
+        assertThat(list, contains(10, 20, 30));
+        assertThat(queue, is(empty()));
     }
 
     private void putTask(BlockingQueue<Integer> queue) {

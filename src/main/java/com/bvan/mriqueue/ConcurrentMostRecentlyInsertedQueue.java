@@ -14,7 +14,14 @@ public class ConcurrentMostRecentlyInsertedQueue<E> extends AbstractQueue<E> imp
 
     private final int capacity;
 
+    /**
+     * Guarded by {@code takeLock}.
+     */
     private Node<E> beforeFirst;
+
+    /**
+     * Guarded by {@code putLock}.
+     */
     private Node<E> last;
 
     private final AtomicInteger count = new AtomicInteger(0);
@@ -148,7 +155,7 @@ public class ConcurrentMostRecentlyInsertedQueue<E> extends AbstractQueue<E> imp
         try {
             Object[] res = new Object[size()];
             int i = 0;
-            for (Node<E> node = beforeFirst; node != null; node = node.next) {
+            for (Node<E> node = firstNode(); node != null; node = node.next) {
                 res[i++] = node.item;
             }
             return res;
@@ -158,6 +165,7 @@ public class ConcurrentMostRecentlyInsertedQueue<E> extends AbstractQueue<E> imp
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T> T[] toArray(T[] a) {
         fullyLock();
         try {
@@ -165,8 +173,9 @@ public class ConcurrentMostRecentlyInsertedQueue<E> extends AbstractQueue<E> imp
             if (a.length < size) {
                 a = (T[]) Array.newInstance(a.getClass().getComponentType(), size);
             }
+
             int i = 0;
-            for (Node<E> node = beforeFirst; node != null; node = node.next) {
+            for (Node<E> node = firstNode(); node != null; node = node.next) {
                 a[i++] = (T) node.item;
             }
             if (a.length > i) {
@@ -254,10 +263,16 @@ public class ConcurrentMostRecentlyInsertedQueue<E> extends AbstractQueue<E> imp
         return res;
     }
 
+    /**
+     * Guarded by {@code takeLock}.
+     */
     private Node<E> firstNode() {
         return beforeFirst.next;
     }
 
+    /**
+     * Guarded by {@code takeLock}.
+     */
     private Node<E> beforeFirstNode() {
         return beforeFirst;
     }
@@ -349,6 +364,7 @@ public class ConcurrentMostRecentlyInsertedQueue<E> extends AbstractQueue<E> imp
             if (lastRet == null) {
                 throw new IllegalStateException();
             }
+
             fullyLock();
             try {
                 Node<E> node = lastRet;
